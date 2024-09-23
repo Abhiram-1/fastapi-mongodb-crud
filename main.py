@@ -1,10 +1,9 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import uvicorn
-from datetime import datetime
-from pydantic import BaseModel, Field, field_validator, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, field_validator
+from typing import Optional, List
 import re
 from enum import Enum
 
@@ -12,8 +11,8 @@ app = FastAPI()
 
 # Connect to MongoDB
 client = MongoClient('mongodb://localhost:27017/')
-db = client['local']
-collection = db['test']
+db = client['user_management']
+user_collection = db['users']
 
 class Gender(str, Enum):
     MALE = "male"
@@ -31,7 +30,7 @@ class UserBase(BaseModel):
     phone_number: str
 
     @field_validator('password')
-    def password_strength(cls, v):
+    def validate_password_strength(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
         if not re.search(r'\d', v):
@@ -45,7 +44,7 @@ class UserBase(BaseModel):
         return v
 
     @field_validator('phone_number')
-    def phone_number_validation(cls, v):
+    def validate_phone_number(cls, v):
         if not re.match(r'^\+?1?\d{9,15}$', v):
             raise ValueError('Invalid phone number format')
         return v
@@ -70,55 +69,55 @@ class UserUpdate(BaseModel):
             return v
         field_name = info.field_name
         if field_name == 'password':
-            return UserBase.password_strength(v)
+            return UserBase.validate_password_strength(v)
         elif field_name == 'phone_number':
-            return UserBase.phone_number_validation(v)
+            return UserBase.validate_phone_number(v)
         return v
 
-@app.get("/getallusers/")
+@app.get("/users/")
 async def get_all_users():
     users = []
-    for user in collection.find():
+    for user in user_collection.find():
         user["_id"] = str(user["_id"])
         users.append(user)
     return users
 
-@app.post("/adduser")
+@app.post("/users/")
 async def create_user(user: UserCreate):
     user_dict = user.model_dump()
-    user_id = collection.insert_one(user_dict).inserted_id
+    user_id = user_collection.insert_one(user_dict).inserted_id
     return {"message": "User created", "user_id": str(user_id)}
 
 @app.get("/users/{user_id}")
-async def get_user(user_id: str):
+async def get_user_by_id(user_id: str):
     try:
-        user_id = ObjectId(user_id)
+        user_object_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-    user = collection.find_one({"_id": user_id})
+    user = user_collection.find_one({"_id": user_object_id})
     if user:
         user["_id"] = str(user["_id"])
         return user
     raise HTTPException(status_code=404, detail="User not found")
 
-@app.put("/userschange/{user_id}")
-async def update_user(user_id: str, user: UserUpdate):
+@app.put("/users/{user_id}")
+async def update_user_by_id(user_id: str, user: UserUpdate):
     try:
-        user_id = ObjectId(user_id)
+        user_object_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
 
     updated_data = {k: v for k, v in user.model_dump().items() if v is not None}
 
-    result = collection.update_one({"_id": user_id}, {"$set": updated_data})
+    result = user_collection.update_one({"_id": user_object_id}, {"$set": updated_data})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found or no changes made")
     
-    return {"message": "User updated"}
+    return {"message": "User updated successfully"}
 
-@app.put("/userschangeall/")
-async def update_users(users: list[UserUpdate]):
+@app.put("/users/bulk-update/")
+async def bulk_update_users(users: List[UserUpdate]):
     updated_count = 0
 
     for user_update in users:
@@ -127,39 +126,39 @@ async def update_users(users: list[UserUpdate]):
             continue
 
         try:
-            user_id = ObjectId(user_id)
+            user_object_id = ObjectId(user_id)
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid user ID format")
 
         updated_data = {k: v for k, v in user_update.model_dump().items() if k != "_id" and v is not None}
 
-        result = collection.update_one({"_id": user_id}, {"$set": updated_data})
+        result = user_collection.update_one({"_id": user_object_id}, {"$set": updated_data})
         updated_count += result.modified_count
 
     if updated_count == 0:
         raise HTTPException(status_code=404, detail="No users found or no changes made")
 
-    return {"message": f"{updated_count} users updated"}
+    return {"message": f"{updated_count} users updated successfully"}
 
-@app.delete("/usersdelete/{user_id}")
-async def delete_user(user_id: str):
+@app.delete("/users/{user_id}")
+async def delete_user_by_id(user_id: str):
     try:
-        user_id = ObjectId(user_id)
+        user_object_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-    result = collection.delete_one({"_id": user_id})
+    result = user_collection.delete_one({"_id": user_object_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"message": "User deleted"}
+    return {"message": "User deleted successfully"}
 
-@app.get("/getalluserspagination/")
-async def get_all_users(page: int = 1, page_size: int = 10):
+@app.get("/users/paginated/")
+async def get_paginated_users(page: int = 1, page_size: int = 10):
     skip = (page - 1) * page_size
     users = []
     
-    cursor = collection.find().skip(skip).limit(page_size)
+    cursor = user_collection.find().skip(skip).limit(page_size)
     
     for user in cursor:
         user["_id"] = str(user["_id"])
@@ -168,7 +167,7 @@ async def get_all_users(page: int = 1, page_size: int = 10):
     return {
         "page": page,
         "page_size": page_size,
-        "total_users": collection.count_documents({}),
+        "total_users": user_collection.count_documents({}),
         "users": users,
     }
 
