@@ -1,3 +1,6 @@
+<img width="573" alt="Screenshot 2024-09-26 at 8 38 55 PM" src="https://github.com/user-attachments/assets/da26cfec-c0c8-4e0d-ac0b-2f41a9c8be94">
+
+
 # FastAPI MongoDB CRUD Application
 
 This project is a RESTful API built with FastAPI and MongoDB for managing user data. It provides a robust backend for user management with features like data validation, pagination, and bulk operations.
