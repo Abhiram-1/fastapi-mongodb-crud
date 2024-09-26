@@ -87,10 +87,5 @@ The API provides appropriate error responses for various scenarios:
 - 404 Not Found: When a requested resource doesn't exist
 - 422 Unprocessable Entity: For validation errors
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-This project is licensed under the MIT License.
