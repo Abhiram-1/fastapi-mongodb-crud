@@ -1,18 +1,30 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import uvicorn
-from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional, List
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator, EmailStr
+from typing import Optional
 import re
 from enum import Enum
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Connect to MongoDB
 client = MongoClient('mongodb://localhost:27017/')
-db = client['user_management']
-user_collection = db['users']
+db = client['local']
+collection = db['test']
 
 class Gender(str, Enum):
     MALE = "male"
@@ -30,7 +42,7 @@ class UserBase(BaseModel):
     phone_number: str
 
     @field_validator('password')
-    def validate_password_strength(cls, v):
+    def password_strength(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
         if not re.search(r'\d', v):
@@ -44,7 +56,7 @@ class UserBase(BaseModel):
         return v
 
     @field_validator('phone_number')
-    def validate_phone_number(cls, v):
+    def phone_number_validation(cls, v):
         if not re.match(r'^\+?1?\d{9,15}$', v):
             raise ValueError('Invalid phone number format')
         return v
@@ -69,55 +81,55 @@ class UserUpdate(BaseModel):
             return v
         field_name = info.field_name
         if field_name == 'password':
-            return UserBase.validate_password_strength(v)
+            return UserBase.password_strength(v)
         elif field_name == 'phone_number':
-            return UserBase.validate_phone_number(v)
+            return UserBase.phone_number_validation(v)
         return v
 
-@app.get("/users/")
+@app.get("/getallusers/")
 async def get_all_users():
     users = []
-    for user in user_collection.find():
+    for user in collection.find():
         user["_id"] = str(user["_id"])
         users.append(user)
     return users
 
-@app.post("/users/")
+@app.post("/adduser")
 async def create_user(user: UserCreate):
     user_dict = user.model_dump()
-    user_id = user_collection.insert_one(user_dict).inserted_id
+    user_id = collection.insert_one(user_dict).inserted_id
     return {"message": "User created", "user_id": str(user_id)}
 
 @app.get("/users/{user_id}")
-async def get_user_by_id(user_id: str):
+async def get_user(user_id: str):
     try:
-        user_object_id = ObjectId(user_id)
+        user_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-    user = user_collection.find_one({"_id": user_object_id})
+    user = collection.find_one({"_id": user_id})
     if user:
         user["_id"] = str(user["_id"])
         return user
     raise HTTPException(status_code=404, detail="User not found")
 
-@app.put("/users/{user_id}")
-async def update_user_by_id(user_id: str, user: UserUpdate):
+@app.put("/userschange/{user_id}")
+async def update_user(user_id: str, user: UserUpdate):
     try:
-        user_object_id = ObjectId(user_id)
+        user_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
 
     updated_data = {k: v for k, v in user.model_dump().items() if v is not None}
 
-    result = user_collection.update_one({"_id": user_object_id}, {"$set": updated_data})
+    result = collection.update_one({"_id": user_id}, {"$set": updated_data})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found or no changes made")
     
-    return {"message": "User updated successfully"}
+    return {"message": "User updated"}
 
-@app.put("/users/bulk-update/")
-async def bulk_update_users(users: List[UserUpdate]):
+@app.put("/userschangeall/")
+async def update_users(users: list[UserUpdate]):
     updated_count = 0
 
     for user_update in users:
@@ -126,39 +138,49 @@ async def bulk_update_users(users: List[UserUpdate]):
             continue
 
         try:
-            user_object_id = ObjectId(user_id)
+            user_id = ObjectId(user_id)
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid user ID format")
 
         updated_data = {k: v for k, v in user_update.model_dump().items() if k != "_id" and v is not None}
 
-        result = user_collection.update_one({"_id": user_object_id}, {"$set": updated_data})
+        result = collection.update_one({"_id": user_id}, {"$set": updated_data})
         updated_count += result.modified_count
 
     if updated_count == 0:
         raise HTTPException(status_code=404, detail="No users found or no changes made")
 
-    return {"message": f"{updated_count} users updated successfully"}
+    return {"message": f"{updated_count} users updated"}
 
-@app.delete("/users/{user_id}")
-async def delete_user_by_id(user_id: str):
+
+@app.post("/adduser")
+async def create_user(user: UserCreate):
+    print(f"Received user data: {user}")  # Debug print
+    user_dict = user.model_dump()
+    print(f"User dict: {user_dict}")  # Debug print
+    user_id = collection.insert_one(user_dict).inserted_id
+    print(f"Inserted user with ID: {user_id}")  # Debug print
+    return {"message": "User created", "user_id": str(user_id)}
+
+@app.delete("/usersdelete/{user_id}")
+async def delete_user(user_id: str):
     try:
-        user_object_id = ObjectId(user_id)
+        user_id = ObjectId(user_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-    result = user_collection.delete_one({"_id": user_object_id})
+    result = collection.delete_one({"_id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"message": "User deleted successfully"}
+    return {"message": "User deleted"}
 
-@app.get("/users/paginated/")
-async def get_paginated_users(page: int = 1, page_size: int = 10):
+@app.get("/getalluserspagination/")
+async def get_all_users(page: int = 1, page_size: int = 10):
     skip = (page - 1) * page_size
     users = []
     
-    cursor = user_collection.find().skip(skip).limit(page_size)
+    cursor = collection.find().skip(skip).limit(page_size)
     
     for user in cursor:
         user["_id"] = str(user["_id"])
@@ -167,9 +189,9 @@ async def get_paginated_users(page: int = 1, page_size: int = 10):
     return {
         "page": page,
         "page_size": page_size,
-        "total_users": user_collection.count_documents({}),
+        "total_users": collection.count_documents({}),
         "users": users,
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
