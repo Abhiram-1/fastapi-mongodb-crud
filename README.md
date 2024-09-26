@@ -1,4 +1,3 @@
-<img width="573" alt="Screenshot 2024-09-26 at 8 38 55 PM" src="https://github.com/user-attachments/assets/da26cfec-c0c8-4e0d-ac0b-2f41a9c8be94">
 
 
 # FastAPI MongoDB CRUD Application
@@ -91,4 +90,5 @@ The API provides appropriate error responses for various scenarios:
 - 422 Unprocessable Entity: For validation errors
 
 
+<img width="573" alt="Screenshot 2024-09-26 at 8 38 55 PM" src="https://github.com/user-attachments/assets/da26cfec-c0c8-4e0d-ac0b-2f41a9c8be94">
 
