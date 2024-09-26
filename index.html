@@ -1,1 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Registration</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #3498db;
+        --error-color: #e74c3c;
+        --success-color: #2ecc71;
+        --background-color: #ecf0f1;
+      }
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: var(--background-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .container {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+      }
+      h1 {
+        text-align: center;
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+      }
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      label {
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+      }
+      button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .error {
+        color: var(--error-color);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+      }
+      #message {
+        text-align: center;
+        margin-top: 1rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+      }
+      .success {
+        background-color: var(--success-color);
+        color: white;
+      }
+      .error-message {
+        background-color: var(--error-color);
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>User Registration</h1>
+      <form id="userForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required />
+          <div class="error" id="username-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required />
+          <div class="error" id="email-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required />
+          <div class="error" id="password-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" name="firstName" required />
+          <div class="error" id="firstName-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" name="lastName" required />
+          <div class="error" id="lastName-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="dateOfBirth">Date of Birth</label>
+          <input type="date" id="dateOfBirth" name="dateOfBirth" required />
+          <div class="error" id="dateOfBirth-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="address">Address</label>
+          <input type="text" id="address" name="address" required />
+          <div class="error" id="address-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="gender">Gender</label>
+          <select id="gender" name="gender" required>
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+          <div class="error" id="gender-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="phoneNumber">Phone Number</label>
+          <input type="tel" id="phoneNumber" name="phoneNumber" required />
+          <div class="error" id="phoneNumber-error"></div>
+        </div>
+        <button type="submit">Register</button>
+      </form>
+      <div id="message"></div>
+    </div>
+
+    <script>
+      const form = document.getElementById("userForm");
+      const message = document.getElementById("message");
+
+      const validators = {
+        username: (value) =>
+          value.length >= 3 || "Username must be at least 3 characters long",
+        email: (value) =>
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || "Invalid email format",
+        password: (value) =>
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+            value
+          ) ||
+          "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character",
+        firstName: (value) => value.length > 0 || "First name is required",
+        lastName: (value) => value.length > 0 || "Last name is required",
+        dateOfBirth: (value) => value !== "" || "Date of birth is required",
+        address: (value) => value.length > 0 || "Address is required",
+        gender: (value) => value !== "" || "Please select a gender",
+        phoneNumber: (value) =>
+          /^\+?1?\d{9,15}$/.test(value) || "Invalid phone number format",
+      };
+
+      const validateField = (field) => {
+        const input = document.getElementById(field);
+        const errorElement = document.getElementById(`${field}-error`);
+        const result = validators[field](input.value);
+
+        if (result === true) {
+          errorElement.textContent = "";
+          return true;
+        } else {
+          errorElement.textContent = result;
+          return false;
+        }
+      };
+
+      Object.keys(validators).forEach((field) => {
+        const input = document.getElementById(field);
+        input.addEventListener("input", () => validateField(field));
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        let isValid = Object.keys(validators).every(validateField);
+
+        if (!isValid) {
+          return;
+        }
+
+        const formData = new FormData(form);
+        const userData = Object.fromEntries(formData.entries());
+
+        const apiData = {
+          username: userData.username,
+          email: userData.email,
+          password: userData.password,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          date_of_birth: userData.dateOfBirth,
+          address: userData.address,
+          gender: userData.gender,
+          phone_number: userData.phoneNumber,
+        };
+
+        try {
+          const response = await fetch("http://localhost:8080/adduser", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(apiData),
+          });
+
+          const result = await response.json();
+          message.textContent = `Success: ${result.message}`;
+          message.className = "success";
+          form.reset();
+        } catch (error) {
+          console.error("Error:", error);
+          message.textContent = `Error: ${error.message}`;
+          message.className = "error-message";
+        }
+      });
+    </script>
+  </body>
+</html>
 
